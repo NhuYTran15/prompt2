@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Role {
+  id       Int    @id @default(autoincrement()) @map("roleid")
+  name     String @unique @db.VarChar(50) @map("rolename")
+  users    User[]
+
+  @@map("roles")
+}
+
+model Membership {
+  id       Int    @id @default(autoincrement()) @map("mid")
+  name     String @unique @db.VarChar(50) @map("mname")
+  score    Int    @default(0)
+  users    User[]
+
+  @@map("memberships")
+}
+
+model User {
+  id           Int        @id @default(autoincrement()) @map("uid")
+  username     String     @unique @db.VarChar(50)
+  fullName     String     @db.VarChar(100) @map("fullname")
+  passwordHash String     @db.VarChar(255) @map("password")
+  roleId       Int        @map("roleid")
+  membershipId Int        @map("mid")
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+  orders       Order[]
+
+  @@index([roleId])
+  @@index([membershipId])
+  @@map("users")
+}
+
+model Product {
+  id           Int           @id @default(autoincrement()) @map("pid")
+  name         String        @db.VarChar(100) @map("pname")
+  price        Decimal       @db.Decimal(10, 2)
+  quantity     Int
+  orderDetails OrderDetail[]
+
+  @@map("products")
+}
+
+model Order {
+  id        Int           @id @default(autoincrement()) @map("oid")
+  userId    Int           @map("uid")
+  createdAt DateTime      @default(now()) @map("createdat")
+  user      User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  details   OrderDetail[]
+  shipments Shipment[]
+
+  @@index([userId])
+  @@map("orders")
+}
+
+model OrderDetail {
+  orderId   Int     @map("oid")
+  productId Int     @map("pid")
+  quantity  Int     @map("qty")
+  unitPrice Decimal @db.Decimal(10, 2) @map("unit_price")
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@id([orderId, productId])
+  @@index([productId])
+  @@map("order_details")
+}
+
+model Shipment {
+  id      Int            @id @default(autoincrement()) @map("shipid")
+  orderId Int            @map("oid")
+  status  ShipmentStatus @default(PENDING)
+  order   Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("shipments")
+}
+
+enum ShipmentStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
